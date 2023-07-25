@@ -39,15 +39,10 @@ fn get_specifier(i: &mut usize) -> String {
 			String::from(arg)
 		}
 		None => {
-			missing_specifier(&args[*i]);
-			String::new()
+			println!("Missing specifier for {}.", args[*i]);
+			std::process::exit(1);
 		},
 	}
-}
-
-fn missing_specifier(arg: &str) {
-	println!("Missing specifier for {}.", arg);
-	std::process::exit(1);
 }
 
 fn unknown_arg(arg: &str) {
