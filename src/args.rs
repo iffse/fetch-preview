@@ -6,27 +6,20 @@ pub fn handle_arguments() -> HashMap<String, String> {
 	if args.len() == 1 {
 		show_help();
 	}
-
-	let mut filename = String::new();
-	let mut output_dir = String::new();
-
+	let mut map = HashMap::new();
 	let mut n = 1;
 	while n < args.len() {
 		match args[n].as_str() {
 			"-f" => {
-				filename = get_specifier(&mut n);
+				map.insert(String::from("file"), get_specifier(&mut n));
 			},
 			"-o" => {
-				output_dir = get_specifier(&mut n);
+				map.insert(String::from("output_dir"), get_specifier(&mut n));
 			},
 			"-h" => show_help(),
 			_ => unknown_arg(&args[n]),
 		}
 	};
-
-	let mut map = HashMap::new();
-	map.insert(String::from("filename"), filename);
-	map.insert(String::from("output_dir"), output_dir);
 	map
 }
 
