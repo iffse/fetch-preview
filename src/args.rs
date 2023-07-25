@@ -10,24 +10,14 @@ pub fn handle_arguments() -> HashMap<String, String> {
 	let mut filename = String::new();
 	let mut output_dir = String::new();
 
-	let check_argument = |x: &usize| {
-		let i = x + 1;
-		if i >= args.len() {
-			missing_arg(args[i - 1].as_str());
-		}
-		i
-	};
-
 	let mut n = 1;
 	while n < args.len() {
 		match args[n].as_str() {
 			"-f" => {
-				n = check_argument(&n);
-				filename = args[n].clone();
+				filename = get_specifier(&mut n);
 			},
 			"-o" => {
-				n = check_argument(&n);
-				output_dir = args[n].clone();
+				output_dir = get_specifier(&mut n);
 			},
 			"-h" => show_help(),
 			_ => unknown_arg(&args[n]),
@@ -35,15 +25,28 @@ pub fn handle_arguments() -> HashMap<String, String> {
 	};
 
 	let mut map = HashMap::new();
-	map.insert("filename".to_string(), filename);
-	map.insert("output_dir".to_string(), output_dir);
+	map.insert(String::from("filename"), filename);
+	map.insert(String::from("output_dir"), output_dir);
 	map
 }
 
+fn get_specifier(i: &mut usize) -> String {
+	let args: Vec<String> = env::args().collect();
+	let arg_content = args.get(*i + 1);
+	match arg_content {
+		Some(arg) => {
+			*i += 2;
+			String::from(arg)
+		}
+		None => {
+			missing_specifier(&args[*i]);
+			String::new()
+		},
+	}
+}
 
-
-fn missing_arg(arg: &str) {
-	println!("Missing argument for {}.", arg);
+fn missing_specifier(arg: &str) {
+	println!("Missing specifier for {}.", arg);
 	std::process::exit(1);
 }
 
