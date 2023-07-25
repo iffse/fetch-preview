@@ -1,5 +1,5 @@
-use std::env;
 use std::collections::HashMap;
+use std::env;
 
 pub fn handle_arguments() -> HashMap<String, String> {
 	let args: Vec<String> = env::args().collect();
@@ -10,16 +10,22 @@ pub fn handle_arguments() -> HashMap<String, String> {
 	let mut n = 1;
 	while n < args.len() {
 		match args[n].as_str() {
-			"-f" => {
+			"-f" | "--file" => {
 				map.insert(String::from("file"), get_specifier(&mut n));
-			},
-			"-o" => {
+			}
+			"-l" | "--link" => {
+				map.insert(String::from("link"), get_specifier(&mut n));
+			}
+			"-o" | "--output_dir" => {
 				map.insert(String::from("output_dir"), get_specifier(&mut n));
-			},
-			"-h" => show_help(),
+			}
+			"-h" | "--help" => show_help(),
 			_ => unknown_arg(&args[n]),
 		}
-	};
+	}
+	if map.get("output_dir").is_none() {
+		map.insert(String::from("output_dir"), String::from("./preview"));
+	}
 	map
 }
 
@@ -34,7 +40,7 @@ fn get_specifier(i: &mut usize) -> String {
 		None => {
 			println!("Missing specifier for {}.", args[*i]);
 			std::process::exit(1);
-		},
+		}
 	}
 }
 
