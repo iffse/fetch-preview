@@ -1,4 +1,4 @@
-use std::{io::Write, path::PathBuf};
+use std::{io::{Write, Read}, path::PathBuf};
 
 use reqwest::Url;
 
@@ -29,21 +29,51 @@ pub async fn fetch_link(
 pub async fn fetch_file(
 	file: &String,
 	output_dir: &String,
+	record: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
 	let file = std::fs::read_to_string(file)?;
 	let mut lines = file.lines();
 	let mut error_links = Vec::new();
+
+	let mut recorded_links = Vec::new();
+	let record_file = std::fs::File::open(PathBuf::from(output_dir).join("record.txt"));
+	if record_file.is_ok() {
+		let mut record_file = record_file.unwrap();
+		let mut record_file_content = String::new();
+		record_file.read_to_string(&mut record_file_content)?;
+		recorded_links = record_file_content.lines().map(|s| s.to_string()).collect();
+	}
+
+	let mut links_to_record = Vec::new();
 	while let Some(line) = lines.next() {
-		let fetch = fetch_link(&line.to_string(), output_dir).await;
+		let link = line.to_string();
+		if recorded_links.contains(&link) {
+			continue;
+		}
+		let fetch = fetch_link(&link, output_dir).await;
 		if fetch.is_err() {
 			println!("Error {:?}", fetch.err().unwrap());
 			error_links.push(line.to_string());
 		}
+		links_to_record.push(link);
 	}
 	if error_links.len() > 0 {
 		println!("Error links:");
 		for link in error_links.iter() {
 			println!("{}", link);
+		}
+	}
+	if record {
+		let mut record_file = std::fs::OpenOptions::new()
+			.append(true)
+			.open(PathBuf::from(output_dir).join("record.txt"));
+		if record_file.is_err() {
+			record_file = std::fs::File::create(PathBuf::from(output_dir).join("record.txt"));
+		}
+		let mut record_file = record_file.unwrap();
+		for link in links_to_record.iter() {
+			record_file.write_all(link.as_bytes())?;
+			record_file.write_all("\n".as_bytes())?;
 		}
 	}
 	Ok(())
@@ -123,12 +153,23 @@ fn get_link_title(res: &str) -> String {
 		return String::from("");
 	}
 	res = res.split_at(end_index.unwrap()).0;
-	res.to_string()
+	let prohibited_chars = ['/', '\\', ':', '*', '?', '"', '<', '>', '|'];
+	let mut res = res.to_string();
+	for c in prohibited_chars.iter() {
+		res = res.replace(*c, " ");
+	}
+	res
 }
 
 fn handgle_image_link<'a>(link: &'a str, url: &'a str) -> &'a str {
 	if link.contains("bilibili") {
-		return url.split_at(url.find('@').unwrap()).0;
+		if let Some(index) = url.find("@") {
+			return url.split_at(index).0;
+		}
+	} else if link.contains("youtube") {
+		if let Some(index) = url.find("?") {
+			return url.split_at(index).0;
+		}
 	}
 	url
 }

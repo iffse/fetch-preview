@@ -20,6 +20,10 @@ pub fn handle_arguments() -> HashMap<String, String> {
 				map.insert(String::from("output_dir"), get_specifier(&mut n));
 			}
 			"-h" | "--help" => show_help(),
+			"-r" | "--record" => {
+				map.insert(String::from("record"), String::from("true"));
+				n += 1;
+			}
 			_ => unknown_arg(&args[n]),
 		}
 	}
@@ -50,6 +54,18 @@ fn unknown_arg(arg: &str) {
 }
 
 fn show_help() {
-	println!("Usage: ");
+	println!("
+Usage: preview [OPTION]...
+Fetches a preview image for a link or a list of links in a file.
+
+Options:
+	-f, --file FILE         Fetches a preview image for each link in FILE.
+	-l, --link LINK         Fetches a preview image for LINK.
+	-o, --output_dir DIR    Sets the output directory to DIR.
+	                        (default: ./preview)
+	-r, --record            Keep a record of the fetched links in the output directory.
+	                        Skips links that have already been fetched. Only works with -f.
+	-h, --help              Shows this help.
+");
 	std::process::exit(0);
 }
