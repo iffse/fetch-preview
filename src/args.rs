@@ -54,7 +54,8 @@ fn unknown_arg(arg: &str) {
 }
 
 fn show_help() {
-	println!("
+	println!(
+		"
 Usage: preview [OPTION]...
 Fetches a preview image for a link or a list of links in a file.
 
@@ -66,6 +67,7 @@ Options:
 	-r, --record            Keep a record of the fetched links in the output directory.
 	                        Skips links that have already been fetched. Only works with -f.
 	-h, --help              Shows this help.
-");
+"
+	);
 	std::process::exit(0);
 }

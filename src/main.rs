@@ -10,11 +10,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let record = args.get("record").is_some();
 
 	if link.is_some() {
-		fetch::fetch_link(link.unwrap(), output_dir.unwrap()).await?;
+		let _ = fetch::fetch_link(link.unwrap(), output_dir.unwrap()).await;
 	}
 
 	if file.is_some() {
-		fetch::fetch_file(file.unwrap(), output_dir.unwrap(), record).await?;
+		let _ = fetch::fetch_file(file.unwrap(), output_dir.unwrap(), record).await;
 	}
 
 	Ok(())

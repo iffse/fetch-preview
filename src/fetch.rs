@@ -1,4 +1,7 @@
-use std::{io::{Write, Read}, path::PathBuf};
+use std::{
+	io::{Read, Write},
+	path::PathBuf,
+};
 
 use reqwest::Url;
 
@@ -32,7 +35,7 @@ pub async fn fetch_file(
 	record: bool,
 ) -> Result<(), Box<dyn std::error::Error>> {
 	let file = std::fs::read_to_string(file)?;
-	let mut lines = file.lines();
+	let lines = file.lines();
 	let mut error_links = Vec::new();
 
 	let mut recorded_links = Vec::new();
@@ -45,19 +48,18 @@ pub async fn fetch_file(
 	}
 
 	let mut links_to_record = Vec::new();
-	while let Some(line) = lines.next() {
+	for line in lines {
 		let link = line.to_string();
 		if recorded_links.contains(&link) {
 			continue;
 		}
 		let fetch = fetch_link(&link, output_dir).await;
 		if fetch.is_err() {
-			println!("Error {:?}", fetch.err().unwrap());
 			error_links.push(line.to_string());
 		}
 		links_to_record.push(link);
 	}
-	if error_links.len() > 0 {
+	if !error_links.is_empty() {
 		println!("Error links:");
 		for link in error_links.iter() {
 			println!("{}", link);
@@ -120,12 +122,16 @@ async fn save_binary_file(
 		true => url,
 		false => https_link.as_str(),
 	};
-	url = handgle_image_link(link, url);
+	url = trim_special_part(url);
 	println!("Downloading image from {}", url);
 
 	let res = Url::parse(url);
 	if res.is_err() {
-		return Err((String::from("Error ") + res.err().unwrap().to_string().as_str() + " for link " + link).into());
+		return Err((String::from("Error ")
+			+ res.err().unwrap().to_string().as_str()
+			+ " for link "
+			+ link)
+			.into());
 	}
 	let res = reqwest::get(res.unwrap()).await?.bytes().await?;
 
@@ -161,14 +167,11 @@ fn get_link_title(res: &str) -> String {
 	res
 }
 
-fn handgle_image_link<'a>(link: &'a str, url: &'a str) -> &'a str {
-	if link.contains("bilibili") {
-		if let Some(index) = url.find("@") {
-			return url.split_at(index).0;
-		}
-	} else if link.contains("youtube") {
-		if let Some(index) = url.find("?") {
-			return url.split_at(index).0;
+fn trim_special_part(url: &str) -> &str {
+	let special_chars = ['@', '?'];
+	for c in special_chars.iter() {
+		if url.contains(*c) {
+			return url.split_at(url.find(*c).unwrap()).0;
 		}
 	}
 	url
