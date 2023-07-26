@@ -1,7 +1,4 @@
-use std::{
-	io::{Read, Write},
-	path::PathBuf,
-};
+use std::{io::Write, path::PathBuf};
 
 use reqwest::Url;
 
@@ -9,84 +6,6 @@ pub async fn fetch_link(
 	link: &String,
 	output_dir: &String,
 ) -> Result<(), Box<dyn std::error::Error>> {
-	let url = Url::parse(link);
-	if url.is_err() {
-		println!("Error {:?} for link {:?}", url.err().unwrap(), link);
-		return Err(link.clone().into());
-	}
-
-	let res = reqwest::get(url.unwrap()).await?.text().await;
-	if res.is_err() {
-		println!("Error {:?} for link {:?}", res.err().unwrap(), link);
-		return Err(link.clone().into());
-	}
-	let res = res.unwrap();
-	let save = save_binary_file(link, &res, output_dir).await;
-	if save.is_err() {
-		println!("Error {:?}", save.err().unwrap());
-		return Err(link.clone().into());
-	}
-	Ok(())
-}
-
-pub async fn fetch_file(
-	file: &String,
-	output_dir: &String,
-	record: bool,
-) -> Result<(), Box<dyn std::error::Error>> {
-	let file = std::fs::read_to_string(file)?;
-	let lines = file.lines();
-	let mut error_links = Vec::new();
-
-	let mut recorded_links = Vec::new();
-	let record_file = std::fs::File::open(PathBuf::from(output_dir).join("record.txt"));
-	if record_file.is_ok() {
-		let mut record_file = record_file.unwrap();
-		let mut record_file_content = String::new();
-		record_file.read_to_string(&mut record_file_content)?;
-		recorded_links = record_file_content.lines().map(|s| s.to_string()).collect();
-	}
-
-	let mut links_to_record = Vec::new();
-	for line in lines {
-		let link = line.to_string();
-		if recorded_links.contains(&link) {
-			continue;
-		}
-		let fetch = fetch_link(&link, output_dir).await;
-		if fetch.is_err() {
-			error_links.push(line.to_string());
-		}
-		links_to_record.push(link);
-	}
-	if !error_links.is_empty() {
-		println!("Error links:");
-		for link in error_links.iter() {
-			println!("{}", link);
-		}
-	}
-	if record {
-		let mut record_file = std::fs::OpenOptions::new()
-			.append(true)
-			.open(PathBuf::from(output_dir).join("record.txt"));
-		if record_file.is_err() {
-			record_file = std::fs::File::create(PathBuf::from(output_dir).join("record.txt"));
-		}
-		let mut record_file = record_file.unwrap();
-		for link in links_to_record.iter() {
-			record_file.write_all(link.as_bytes())?;
-			record_file.write_all("\n".as_bytes())?;
-		}
-	}
-	Ok(())
-}
-
-async fn save_binary_file(
-	link: &str,
-	res: &str,
-	output_dir: &String,
-) -> Result<(), Box<dyn std::error::Error>> {
-	let title = get_link_title(res);
 	let link_bare = link.split_at(link.find("//").unwrap() + 2).1;
 	let link_part = link_bare.split_at(link_bare.find('/').unwrap());
 	let domain = link_part.0.to_string();
@@ -100,6 +19,73 @@ async fn save_binary_file(
 		id = id.split_at(index.unwrap() + 1).1;
 	}
 
+	let dir = std::fs::read_dir(output_dir);
+	if dir.is_ok() {
+		for entry in dir.unwrap() {
+			let entry = entry.unwrap();
+			let file_name = entry.file_name();
+			let file_name = file_name.to_str().unwrap();
+			let match_name = domain.to_owned() + " - " + id;
+			if file_name.contains(&match_name) {
+				println!("Image for {} already exists, skipping...", &link);
+				return Ok(());
+			}
+		}
+	}
+
+	let url = Url::parse(link);
+	if url.is_err() {
+		println!("Error {:?} for link {:?}", url.err().unwrap(), link);
+		return Err(link.clone().into());
+	}
+
+	let res = reqwest::get(url.unwrap()).await?.text().await;
+	if res.is_err() {
+		println!("Error {:?} for link {:?}", res.err().unwrap(), link);
+		return Err(link.clone().into());
+	}
+
+	let res = res.unwrap();
+	let title = get_link_title(&res);
+	let file_name = title + " " + &domain + " - " + id;
+	let save = save_binary_file(link, &res, output_dir, &file_name).await;
+	if save.is_err() {
+		println!("Error {:?}", save.err().unwrap());
+		return Err(link.clone().into());
+	}
+	Ok(())
+}
+
+pub async fn fetch_file(
+	file: &String,
+	output_dir: &String,
+) -> Result<(), Box<dyn std::error::Error>> {
+	let file = std::fs::read_to_string(file)?;
+	let lines = file.lines();
+	let mut error_links = Vec::new();
+
+	for line in lines {
+		let link = line.to_string();
+		let fetch = fetch_link(&link, output_dir).await;
+		if fetch.is_err() {
+			error_links.push(line.to_string());
+		}
+	}
+	if !error_links.is_empty() {
+		println!("Error links:");
+		for link in error_links.iter() {
+			println!("{}", link);
+		}
+	}
+	Ok(())
+}
+
+async fn save_binary_file(
+	link: &str,
+	res: &str,
+	output_dir: &String,
+	file_name: &String,
+) -> Result<(), Box<dyn std::error::Error>> {
 	let mut url = <&str>::clone(&res);
 	let og_image = String::from("property=\"og:image\" content=\"");
 	let og_index = url.find(&og_image);
@@ -136,7 +122,7 @@ async fn save_binary_file(
 	let res = reqwest::get(res.unwrap()).await?.bytes().await?;
 
 	let mut path = PathBuf::from(output_dir);
-	path.push(title + " " + &domain + " - " + id + find_extension_name(url));
+	path.push(file_name.to_owned() + find_extension_name(url));
 
 	std::fs::create_dir_all(path.parent().unwrap())?;
 	let mut file = std::fs::File::create(path)?;
