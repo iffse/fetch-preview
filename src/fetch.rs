@@ -1,4 +1,4 @@
-use std::{io::Write, path::PathBuf};
+use std::{io::Write, path::PathBuf, collections::HashMap};
 
 use reqwest::Url;
 
@@ -149,6 +149,17 @@ fn get_link_title(res: &str) -> String {
 	let mut res = res.to_string();
 	for c in prohibited_chars.iter() {
 		res = res.replace(*c, " ");
+	}
+
+	let char_map = HashMap::from([
+		("&#39;", "'"),
+		("&amp;", "&"),
+		("&quot;", "\""),
+		("&lt;", "<"),
+		("&gt;", ">"),
+	]);
+	for (key, value) in char_map.iter() {
+		res = res.replace(key, value);
 	}
 	res
 }
