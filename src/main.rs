@@ -1,8 +1,6 @@
 mod args;
 mod fetch;
 
-use reqwest::Url;
-
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
 	let args = args::handle_arguments();
@@ -12,6 +10,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 	if link.is_some() {
 		fetch::fetch_link(link.unwrap(), output_dir.unwrap()).await?;
+	}
+
+	if file.is_some() {
+		fetch::fetch_file(file.unwrap(), output_dir.unwrap()).await?;
 	}
 
 	Ok(())

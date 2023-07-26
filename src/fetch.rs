@@ -9,11 +9,43 @@ pub async fn fetch_link(
 	let url = Url::parse(link);
 	if url.is_err() {
 		println!("Error {:?} for link {:?}", url.err().unwrap(), link);
-		return Ok(());
+		return Err(link.clone().into());
 	}
 
-	let res = reqwest::get(url.unwrap()).await?.text().await?;
-	save_binary_file(link, &res, output_dir).await?;
+	let res = reqwest::get(url.unwrap()).await?.text().await;
+	if res.is_err() {
+		println!("Error {:?} for link {:?}", res.err().unwrap(), link);
+		return Err(link.clone().into());
+	}
+	let res = res.unwrap();
+	let save = save_binary_file(link, &res, output_dir).await;
+	if save.is_err() {
+		println!("Error {:?}", save.err().unwrap());
+		return Err(link.clone().into());
+	}
+	Ok(())
+}
+
+pub async fn fetch_file(
+	file: &String,
+	output_dir: &String,
+) -> Result<(), Box<dyn std::error::Error>> {
+	let file = std::fs::read_to_string(file)?;
+	let mut lines = file.lines();
+	let mut error_links = Vec::new();
+	while let Some(line) = lines.next() {
+		let fetch = fetch_link(&line.to_string(), output_dir).await;
+		if fetch.is_err() {
+			println!("Error {:?}", fetch.err().unwrap());
+			error_links.push(line.to_string());
+		}
+	}
+	if error_links.len() > 0 {
+		println!("Error links:");
+		for link in error_links.iter() {
+			println!("{}", link);
+		}
+	}
 	Ok(())
 }
 
@@ -63,7 +95,7 @@ async fn save_binary_file(
 
 	let res = Url::parse(url);
 	if res.is_err() {
-		return Err("Error parsing og:image url".into());
+		return Err((String::from("Error ") + res.err().unwrap().to_string().as_str() + " for link " + link).into());
 	}
 	let res = reqwest::get(res.unwrap()).await?.bytes().await?;
 
