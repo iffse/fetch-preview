@@ -9,7 +9,7 @@ pub async fn fetch_link(
 	let url = Url::parse(link);
 	if url.is_err() {
 		println!("Error {:?} for link {:?}", url.err().unwrap(), link);
-		std::process::exit(1);
+		return Ok(());
 	}
 
 	let res = reqwest::get(url.unwrap()).await?.text().await?;
@@ -35,21 +35,17 @@ async fn save_binary_file(
 		}
 		id = id.split_at(index.unwrap() + 1).1;
 	}
-	let mut path = PathBuf::from(output_dir);
-	path.push(title + " " + &domain + " - " + id + ".jpg");
 
 	let mut url = <&str>::clone(&res);
 	let og_image = String::from("property=\"og:image\" content=\"");
 	let og_index = url.find(&og_image);
 	if og_index.is_none() {
-		return Err("No og:image found".into());
+		return Err((String::from("No og:image found for link ") + link).into());
 	}
-	url = url
-		.split_at(og_index.unwrap() + og_image.len())
-		.1;
+	url = url.split_at(og_index.unwrap() + og_image.len()).1;
 	let end_index = url.find("\">");
 	if end_index.is_none() {
-		return Err("No end of og:image found".into());
+		return Err((String::from("No end of og:image found for link ") + link).into());
 	}
 	url = url.split_at(end_index.unwrap()).0;
 
@@ -62,11 +58,17 @@ async fn save_binary_file(
 		true => url,
 		false => https_link.as_str(),
 	};
+	url = handgle_image_link(link, url);
+	println!("Downloading image from {}", url);
+
 	let res = Url::parse(url);
 	if res.is_err() {
 		return Err("Error parsing og:image url".into());
 	}
 	let res = reqwest::get(res.unwrap()).await?.bytes().await?;
+
+	let mut path = PathBuf::from(output_dir);
+	path.push(title + " " + &domain + " - " + id + find_extension_name(url));
 
 	std::fs::create_dir_all(path.parent().unwrap())?;
 	let mut file = std::fs::File::create(path)?;
@@ -82,9 +84,7 @@ fn get_link_title(res: &str) -> String {
 	if og_index.is_none() {
 		return String::from("");
 	}
-	res = res
-		.split_at(og_index.unwrap() + og_title.len())
-		.1;
+	res = res.split_at(og_index.unwrap() + og_title.len()).1;
 
 	let end_index = res.find("\">");
 	if end_index.is_none() {
@@ -92,4 +92,21 @@ fn get_link_title(res: &str) -> String {
 	}
 	res = res.split_at(end_index.unwrap()).0;
 	res.to_string()
+}
+
+fn handgle_image_link<'a>(link: &'a str, url: &'a str) -> &'a str {
+	if link.contains("bilibili") {
+		return url.split_at(url.find('@').unwrap()).0;
+	}
+	url
+}
+
+fn find_extension_name(url: &str) -> &str {
+	let extension_list = [".jpg", ".png", ".jpeg", ".gif", ".webp"];
+	for extension in extension_list.iter() {
+		if url.contains(extension) {
+			return extension;
+		}
+	}
+	".png"
 }
