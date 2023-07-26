@@ -2,7 +2,7 @@
 
 A utility to fetch preview images from given links.
 
-This tool can come handy when you kept a large list, and you don't want to know the content by clicking.
+This tool can come handy when you kept a large list of links, and you don't want to check the contents manually.
 
 The initiative of this project is to provide a preview for my MPV playlist that I use as a [music player](https://codeberg.org/iff/dotfiles/src/branch/main/shell/ms).
 
