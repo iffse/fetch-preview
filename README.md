@@ -10,7 +10,7 @@ The initiative of this project is to provide a preview for my MPV playlist that 
 
 Example:
 ```
-cargo run --release - --file path/to/file/with/links --output_dir path/to/output/dir --record
+cargo run --release - --file path/to/file/with/links
 ```
 
 Usages:
@@ -22,7 +22,5 @@ Options:
 	-f, --file FILE         Fetches a preview image for each link in FILE.
 	-l, --link LINK         Fetches a preview image for LINK.
 	-o, --output_dir DIR    Sets the output directory to DIR. (default: ./preview)
-	-r, --record            Keep a record of the fetched links in the output directory.
-	                        Skips links that have already been fetched. Only works with -f.
 	-h, --help              Shows this help.
 ```
