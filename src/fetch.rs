@@ -1,4 +1,4 @@
-use std::{io::Write, path::PathBuf, collections::HashMap};
+use std::{collections::HashMap, io::Write, path::PathBuf};
 
 use reqwest::Url;
 
@@ -33,25 +33,29 @@ pub async fn fetch_link(
 		}
 	}
 
-	let url = Url::parse(link);
+	let mut link = link.to_owned();
+	if !link.starts_with("http") {
+		link.insert_str(0, "https://");
+	}
+	let url = Url::parse(&link);
 	if url.is_err() {
 		println!("Error {:?} for link {:?}", url.err().unwrap(), link);
-		return Err(link.clone().into());
+		return Err(link.into());
 	}
 
 	let res = reqwest::get(url.unwrap()).await?.text().await;
 	if res.is_err() {
 		println!("Error {:?} for link {:?}", res.err().unwrap(), link);
-		return Err(link.clone().into());
+		return Err(link.into());
 	}
 
 	let res = res.unwrap();
 	let title = get_link_title(&res);
 	let file_name = title + " " + &domain + " - " + id;
-	let save = save_binary_file(link, &res, output_dir, &file_name).await;
+	let save = save_binary_file(&link, &res, output_dir, &file_name).await;
 	if save.is_err() {
 		println!("Error {:?}", save.err().unwrap());
-		return Err(link.clone().into());
+		return Err(link.into());
 	}
 	Ok(())
 }
