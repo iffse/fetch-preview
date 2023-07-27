@@ -2,7 +2,7 @@ use std::{collections::HashMap, io::Write, path::PathBuf};
 
 use reqwest::Url;
 
-pub async fn fetch_link(
+pub fn fetch_link(
 	link: &String,
 	output_dir: &String,
 ) -> Result<(), Box<dyn std::error::Error>> {
@@ -43,7 +43,7 @@ pub async fn fetch_link(
 		return Err(link.into());
 	}
 
-	let res = reqwest::get(url.unwrap()).await?.text().await;
+	let res = reqwest::blocking::get(url.unwrap())?.text();
 	if res.is_err() {
 		println!("Error {:?} for link {:?}", res.err().unwrap(), link);
 		return Err(link.into());
@@ -52,7 +52,7 @@ pub async fn fetch_link(
 	let res = res.unwrap();
 	let title = get_link_title(&res);
 	let file_name = title + " " + &domain + " - " + id;
-	let save = save_binary_file(&link, &res, output_dir, &file_name).await;
+	let save = save_binary_file(&link, &res, output_dir, &file_name);
 	if save.is_err() {
 		println!("Error {:?}", save.err().unwrap());
 		return Err(link.into());
@@ -60,7 +60,7 @@ pub async fn fetch_link(
 	Ok(())
 }
 
-pub async fn fetch_file(
+pub fn fetch_file(
 	file: &String,
 	output_dir: &String,
 ) -> Result<(), Box<dyn std::error::Error>> {
@@ -70,7 +70,7 @@ pub async fn fetch_file(
 
 	for line in lines {
 		let link = line.to_string();
-		let fetch = fetch_link(&link, output_dir).await;
+		let fetch = fetch_link(&link, output_dir);
 		if fetch.is_err() {
 			error_links.push(line.to_string());
 		}
@@ -84,7 +84,7 @@ pub async fn fetch_file(
 	Ok(())
 }
 
-async fn save_binary_file(
+fn save_binary_file(
 	link: &str,
 	res: &str,
 	output_dir: &String,
@@ -123,7 +123,7 @@ async fn save_binary_file(
 			+ link)
 			.into());
 	}
-	let res = reqwest::get(res.unwrap()).await?.bytes().await?;
+	let res = reqwest::blocking::get(res.unwrap())?.bytes()?;
 
 	let mut path = PathBuf::from(output_dir);
 	path.push(file_name.to_owned() + find_extension_name(url));
